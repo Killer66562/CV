@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import math
+import statistics
 
 
 #Local threshold
@@ -98,17 +100,93 @@ def ostu(image: cv2.typing.MatLike):
 
     return new_image
 
+def mean_filter(image: cv2.typing.MatLike, rad: int = 1):
+    height, width, channels = image.shape
+
+    new_image = np.array([[[image[i][j][c] for c in range(channels)] for j in range(width)] for i in range(height)])
+
+    pixels_in_window = (rad * 2 + 1) ** 2
+    pixels = np.array([0 for _ in range(pixels_in_window)], dtype=int)
+
+    for c in range(channels):
+        for i in range(height):
+            for j in range(width):
+                pixel = image[i][j][c]
+                idx = 0
+                for k in range(i - rad, i + rad + 1):
+                    for l in range(j - rad, j + rad + 1):
+                        if k < 0 or k >= height or l < 0 or l >= width:
+                            pixels[idx] = pixel
+                        else:
+                            pixels[idx] = image[k][l][c]
+                        idx += 1
+                new_image[i][j][c] = int(np.mean(pixels))
+
+    return new_image
+
+def gas_filter(image: cv2.typing.MatLike, rad: int = 1):
+    height, width, channels = image.shape
+
+    new_image = np.array([[[image[i][j][c] for c in range(channels)] for j in range(width)] for i in range(height)])
+
+    pixels_in_window = (rad * 2 + 1) ** 2
+    pixels = np.array([0 for _ in range(pixels_in_window)], dtype=int)
+    gases = np.array([0 for _ in range(pixels_in_window)], dtype=float)
+    v_arr = np.array([0 for _ in range(channels)], dtype=float)
+
+    for c in range(channels):
+        v_arr[c] = np.std(np.array([[image[i][j][c] for j in range(width)] for i in range(height)], dtype=float)) ** 2
+        idx = 0
+
+        for i in range(-rad, rad + 1):
+            for j in range(-rad, rad + 1):
+                gas = (1 / (2 * np.pi * v_arr[c])) * np.pow(np.e, ((i ** 2 + j ** 2) / (2 * v_arr[c])) * -1)
+                gases[idx] = gas
+                idx += 1
+        
+        sum = np.sum(gases)
+        gases = gases / np.array([sum for _ in range(pixels_in_window)])
+
+        for i in range(height):
+            for j in range(width):
+                idx = 0
+                for k in range(i - rad, i + rad + 1):
+                    for l in range(j - rad, j + rad + 1):
+                        if k < 0 or k >= height or l < 0 or l >= width:
+                            pixels[idx] = image[i][j][c] * gases[idx]
+                        else:
+                            pixels[idx] = image[k][l][c] * gases[idx]
+                        idx += 1
+
+                new_image[i][j][c] = int(np.sum(pixels))
+
+    return new_image
 
 def main():
-    image = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
+    '''
+    lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
-    image_niblack = niblack(image)
-    image_sauvola = sauvola(image)
-    cv2.imwrite('lena_niblack.jpg', image_niblack)
-    cv2.imwrite('lena_sauvola.jpg', image_sauvola)
+    lena_niblack = niblack(lena)
+    cv2.imwrite('lena_niblack.jpg', lena_niblack)
 
-    image_ostu = ostu(image)
-    cv2.imwrite('lena_ostu.jpg', image_ostu)
+    lena_sauvola = sauvola(lena)
+    cv2.imwrite('lena_sauvola.jpg', lena_sauvola)
+
+    lena_ostu = ostu(lena)
+    cv2.imwrite('lena_ostu.jpg', lena_ostu)
+    '''
+
+    noise = cv2.imread('noise.bmp')
+
+    noise_mean_filter = mean_filter(noise, rad=3)
+    cv2.imshow('noise_mean_filter', noise_mean_filter)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    noise_gas_filter = gas_filter(noise, rad=3)
+    cv2.imshow('noise_gas_filter', noise_gas_filter)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
