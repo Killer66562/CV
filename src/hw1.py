@@ -1,7 +1,5 @@
 import cv2
 import numpy as np
-import math
-import statistics
 
 
 #Local threshold
@@ -163,7 +161,6 @@ def gas_filter(image: cv2.typing.MatLike, rad: int = 1):
     return new_image
 
 def main():
-    '''
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
     lena_niblack = niblack(lena)
@@ -174,19 +171,14 @@ def main():
 
     lena_ostu = ostu(lena)
     cv2.imwrite('lena_ostu.jpg', lena_ostu)
-    '''
 
     noise = cv2.imread('noise.bmp')
 
-    noise_mean_filter = mean_filter(noise, rad=3)
-    cv2.imshow('noise_mean_filter', noise_mean_filter)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    noise_mean_filter = mean_filter(noise, rad=1)
+    cv2.imwrite('noise_mean_filter.jpg', noise_mean_filter)
 
-    noise_gas_filter = gas_filter(noise, rad=3)
-    cv2.imshow('noise_gas_filter', noise_gas_filter)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    noise_gas_filter = gas_filter(noise, rad=1)
+    cv2.imwrite('noise_gas_filter.jpg', noise_gas_filter)
 
 if __name__ == '__main__':
     main()
