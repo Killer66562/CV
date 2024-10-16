@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
+import multiprocessing
 
-
+from concurrent.futures import ThreadPoolExecutor
 #Local threshold
 def niblack(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2) -> cv2.typing.MatLike:
     height, width = image.shape
@@ -57,6 +58,30 @@ def sauvola(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2, R: int = 1
                 new_image[i][j] = 255
             else:
                 new_image[i][j] = 0
+
+    return new_image
+
+#Global threshold
+def isodata_thresholding(image: cv2.typing.MatLike, threshold: int, difference: float = 0.5) -> cv2.typing.MatLike:
+    height, width = image.shape
+    new_image = np.array([[image[i][j] for j in range(width)] for i in range(height)])
+
+    while True:
+        prev_threshold = threshold
+
+        pixels_below_threshold = image[image <= threshold]
+        pixels_above_threshold = image[image > threshold]
+
+        pixels_below_threshold_avr = pixels_below_threshold.mean() if pixels_below_threshold.size > 0 else 0
+        pixels_above_threshold_avr = pixels_above_threshold.mean() if pixels_above_threshold.size > 0 else 0
+
+        threshold = (pixels_below_threshold_avr + pixels_above_threshold_avr) / 2.0
+        if abs(prev_threshold - threshold) < difference:
+            break
+
+    for i in range(height):
+        for j in range(width):
+            new_image[i][j] = 0 if new_image[i][j] <= threshold else 255
 
     return new_image
 
@@ -161,7 +186,9 @@ def gas_filter(image: cv2.typing.MatLike, rad: int = 1):
     return new_image
 
 def main():
+
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
+    '''
 
     lena_niblack = niblack(lena)
     cv2.imwrite('lena_niblack.jpg', lena_niblack)
@@ -171,14 +198,19 @@ def main():
 
     lena_ostu = ostu(lena)
     cv2.imwrite('lena_ostu.jpg', lena_ostu)
+    '''
+    lena_isodata_thresholding = isodata_thresholding(lena, 255)
+    cv2.imwrite('lena_isodata_thresholding.jpg', lena_isodata_thresholding)
 
     noise = cv2.imread('noise.bmp')
 
+    '''
     noise_mean_filter = mean_filter(noise, rad=1)
     cv2.imwrite('noise_mean_filter.jpg', noise_mean_filter)
 
     noise_gas_filter = gas_filter(noise, rad=1)
     cv2.imwrite('noise_gas_filter.jpg', noise_gas_filter)
+    '''
 
 if __name__ == '__main__':
     main()
