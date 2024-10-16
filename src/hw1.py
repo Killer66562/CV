@@ -1,10 +1,9 @@
 import cv2
 import numpy as np
-import multiprocessing
 
-from concurrent.futures import ThreadPoolExecutor
+
 #Local threshold
-def niblack(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2) -> cv2.typing.MatLike:
+def niblack_thresholding(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2) -> cv2.typing.MatLike:
     height, width = image.shape
     pixels_in_window = (rad * 2 + 1) ** 2
 
@@ -33,7 +32,7 @@ def niblack(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2) -> cv2.typ
     return new_image
 
 #Local threshold
-def sauvola(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2, R: int = 128) -> cv2.typing.MatLike:
+def sauvola_thresholding(image: cv2.typing.MatLike, rad: int = 1, K: float = -0.2, R: int = 128) -> cv2.typing.MatLike:
     height, width = image.shape
     pixels_in_window = (rad * 2 + 1) ** 2
 
@@ -86,7 +85,7 @@ def isodata_thresholding(image: cv2.typing.MatLike, threshold: int, difference: 
     return new_image
 
 #Globol threshold
-def ostu(image: cv2.typing.MatLike):
+def ostu_thresholding(image: cv2.typing.MatLike):
     height, width = image.shape
     n = height * width
 
@@ -147,7 +146,7 @@ def mean_filter(image: cv2.typing.MatLike, rad: int = 1):
 
     return new_image
 
-def gas_filter(image: cv2.typing.MatLike, rad: int = 1):
+def gaussian_filter(image: cv2.typing.MatLike, rad: int = 1):
     height, width, channels = image.shape
 
     new_image = np.array([[[image[i][j][c] for c in range(channels)] for j in range(width)] for i in range(height)])
@@ -186,31 +185,33 @@ def gas_filter(image: cv2.typing.MatLike, rad: int = 1):
     return new_image
 
 def main():
-
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
-    '''
 
-    lena_niblack = niblack(lena)
-    cv2.imwrite('lena_niblack.jpg', lena_niblack)
+    lena_niblack = niblack_thresholding(lena)
+    cv2.imwrite('lena_niblack_thresholding.png', lena_niblack)
+    del lena_niblack
 
-    lena_sauvola = sauvola(lena)
-    cv2.imwrite('lena_sauvola.jpg', lena_sauvola)
+    lena_sauvola = sauvola_thresholding(lena)
+    cv2.imwrite('lena_sauvola_thresholding.png', lena_sauvola)
+    del lena_sauvola
 
-    lena_ostu = ostu(lena)
-    cv2.imwrite('lena_ostu.jpg', lena_ostu)
-    '''
+    lena_ostu = ostu_thresholding(lena)
+    cv2.imwrite('lena_ostu_thresholding.png', lena_ostu)
+    del lena_ostu
+
     lena_isodata_thresholding = isodata_thresholding(lena, 255)
-    cv2.imwrite('lena_isodata_thresholding.jpg', lena_isodata_thresholding)
+    cv2.imwrite('lena_isodata_thresholding.png', lena_isodata_thresholding)
+    del lena_isodata_thresholding
 
     noise = cv2.imread('noise.bmp')
 
-    '''
     noise_mean_filter = mean_filter(noise, rad=1)
-    cv2.imwrite('noise_mean_filter.jpg', noise_mean_filter)
+    cv2.imwrite('noise_mean_filter.png', noise_mean_filter)
+    del noise_mean_filter
 
-    noise_gas_filter = gas_filter(noise, rad=1)
-    cv2.imwrite('noise_gas_filter.jpg', noise_gas_filter)
-    '''
+    noise_gas_filter = gaussian_filter(noise, rad=1)
+    cv2.imwrite('noise_gaussian_filter.png', noise_gas_filter)
+    del noise_gas_filter
 
 if __name__ == '__main__':
     main()
