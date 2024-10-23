@@ -48,19 +48,16 @@ def sobel(image: cv2.typing.MatLike, threshold: int = 63) -> cv2.typing.MatLike:
             dot_x = np.abs(np.sum(pixels_x * sobel_x))
             dot_y = np.abs(np.sum(pixels_y * sobel_y))
 
-            print(dot_x)
-            print(dot_y)
-
             new_image_x[i][j] = 0 if dot_x <= threshold else 255
             new_image_y[i][j] = 0 if dot_y <= threshold else 255
     
-    new_image = new_image_x | new_image_y
+    new_image = new_image_x + new_image_y
     return new_image
 
 def main():
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
-    lena_sobel = sobel(lena)
+    lena_sobel = sobel(lena, 63)
     cv2.imwrite('lena_sobel.png', lena_sobel)
 
 if __name__ == "__main__":
