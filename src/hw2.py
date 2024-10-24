@@ -2,7 +2,20 @@ import cv2
 import numpy as np
 
 
-def sobel(image: cv2.typing.MatLike, threshold: int = 63) -> cv2.typing.MatLike:
+def normalize(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
+    max_value = np.max(image)
+    min_value = np.min(image)
+
+    delta = max_value - min_value
+
+    if delta == 0:
+        delta = 255
+
+    new_image = ((image - min_value) / delta * 255).astype(np.uint8)
+    return new_image
+        
+
+def sobel(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
     height, width = image.shape
 
     sobel_x = np.array([
@@ -21,16 +34,16 @@ def sobel(image: cv2.typing.MatLike, threshold: int = 63) -> cv2.typing.MatLike:
         [0, 0, 0], 
         [0, 0, 0], 
         [0, 0, 0]
-    ])
+    ], dtype=np.float32)
 
     pixels_y = np.array([
         [0, 0, 0], 
         [0, 0, 0], 
         [0, 0, 0]
-    ])
+    ], dtype=np.float32)
 
-    new_image_x = np.array([[image[i][j] for j in range(width)] for i in range(height)])
-    new_image_y = np.array([[image[i][j] for j in range(width)] for i in range(height)])
+    gx = np.array([[image[i][j] for j in range(width)] for i in range(height)], dtype=np.float32)
+    gy = np.array([[image[i][j] for j in range(width)] for i in range(height)], dtype=np.float32)
     
     for i in range(height):
         for j in range(width):
@@ -45,13 +58,12 @@ def sobel(image: cv2.typing.MatLike, threshold: int = 63) -> cv2.typing.MatLike:
                         pixels_x[k][l] = image[real_k][real_l]
                         pixels_y[k][l] = image[real_k][real_l]
 
-            dot_x = np.abs(np.sum(pixels_x * sobel_x))
-            dot_y = np.abs(np.sum(pixels_y * sobel_y))
+            gx[i][j] = np.sum(pixels_x * sobel_x)
+            gy[i][j] = np.sum(pixels_y * sobel_y)
 
-            new_image_x[i][j] = 0 if dot_x <= threshold else 255
-            new_image_y[i][j] = 0 if dot_y <= threshold else 255
+    new_image = np.sqrt(gx ** 2 + gy ** 2)
+    new_image = normalize(new_image)
     
-    new_image = new_image_x + new_image_y
     return new_image
 
 def main():
