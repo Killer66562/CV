@@ -69,7 +69,7 @@ def sobel(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
 def main():
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
-    lena_sobel = sobel(lena, 63)
+    lena_sobel = sobel(lena)
     cv2.imwrite('lena_sobel.png', lena_sobel)
 
 if __name__ == "__main__":
