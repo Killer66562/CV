@@ -2,29 +2,65 @@ import cv2
 import numpy as np
 
 
-def get_sobel_x(rad: int = 1):
-    k_size = rad * 2 + 1
-    kernel = np.zeros((k_size, k_size), dtype=np.float32)
+sobel_x = np.array([
+    [-1, 0, 1], 
+    [-2, 0, 2], 
+    [-1, 0, 1]
+], dtype=np.float32)
 
-    for i in range(k_size):
-        if i == rad:
-            kernel[i] = np.array(list(range(-2 * rad, 2 * rad + 1, 2)))
-        else:
-            kernel[i] = np.array(list(range(-1 * rad, 1 * rad + 1, 1)))
-    
-    return kernel
+sobel_y = np.array([
+    [-1, -2, -1], 
+    [0, 0, 0], 
+    [1, 2, 1]
+], dtype=np.float32)
 
-def get_sobel_y(rad: int = 1):
-    k_size = rad * 2 + 1
-    kernel = np.zeros((k_size, k_size), dtype=np.float32)
+prewitt_x = np.array([
+    [1, 1, 1], 
+    [0, 0, 0], 
+    [-1, -1, -1]
+], dtype=np.float32)
 
-    for i in range(k_size):
-        if i == rad:
-            kernel[:k_size, i] = np.array(list(range(-2 * rad, 2 * rad + 1, 2)))
-        else:
-            kernel[:k_size, i] = np.array(list(range(-1 * rad, 1 * rad + 1, 1)))
-    
-    return kernel
+prewitt_y = np.array([
+    [1, 0, -1], 
+    [1, 0, -1], 
+    [1, 0, -1]
+], dtype=np.float32)
+
+def gaussian_filter(image: cv2.typing.MatLike, rad: int = 1):
+    height, width = image.shape
+
+    new_image = np.array([[image[i][j] for j in range(width)] for i in range(height)])
+
+    pixels_in_window = (rad * 2 + 1) ** 2
+    pixels = np.array([0 for _ in range(pixels_in_window)], dtype=int)
+    gases = np.array([0 for _ in range(pixels_in_window)], dtype=float)
+    v = np.std(np.array([[image[i][j] for j in range(width)] for i in range(height)], dtype=float)) ** 2
+
+    idx = 0
+
+    for i in range(-rad, rad + 1):
+        for j in range(-rad, rad + 1):
+            gas = (1 / (2 * np.pi * v)) * np.pow(np.e, ((i ** 2 + j ** 2) / (2 * v)) * -1)
+            gases[idx] = gas
+            idx += 1
+        
+    sum = np.sum(gases)
+    gases = gases / np.array([sum for _ in range(pixels_in_window)])
+
+    for i in range(height):
+        for j in range(width):
+            idx = 0
+            for k in range(i - rad, i + rad + 1):
+                for l in range(j - rad, j + rad + 1):
+                    if k < 0 or k >= height or l < 0 or l >= width:
+                        pixels[idx] = image[i][j] * gases[idx]
+                    else:
+                        pixels[idx] = image[k][l] * gases[idx]
+                    idx += 1
+
+            new_image[i][j] = int(np.sum(pixels))
+
+    return new_image
 
 def unnormalize(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
     '''
@@ -36,9 +72,10 @@ def unnormalize(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
     delta = max_value - min_value
 
     if delta == 0:
-        delta = 255
+        new_image = np.zeros_like(image)
+    else:
+        new_image = ((image - min_value) / delta * 255).astype(np.uint8)
 
-    new_image = ((image - min_value) / delta * 255).astype(np.uint8)
     return new_image
 
 def normalize(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
@@ -57,17 +94,15 @@ def normalize(image: cv2.typing.MatLike) -> cv2.typing.MatLike:
 
     return new_image
 
-def get_gradients(image: cv2.typing.MatLike, rad: int = 1) -> tuple[cv2.typing.MatLike, cv2.typing.MatLike]:
+def get_gradients(image: cv2.typing.MatLike, operator_x, operator_y) -> tuple[cv2.typing.MatLike, cv2.typing.MatLike]:
     '''
     Return normalized Gx, Gy
     '''
     height, width = image.shape
-    k_size = rad * 2 + 1
+    k_size = 3
 
     normalized_image = normalize(image)
 
-    sobel_x = get_sobel_x(rad)
-    sobel_y = get_sobel_y(rad)
     pixels_x = np.zeros((k_size, k_size), dtype=np.float32)
     pixels_y = np.zeros((k_size, k_size), dtype=np.float32)
 
@@ -87,29 +122,78 @@ def get_gradients(image: cv2.typing.MatLike, rad: int = 1) -> tuple[cv2.typing.M
                         pixels_x[k][l] = normalized_image[real_k][real_l]
                         pixels_y[k][l] = normalized_image[real_k][real_l]
 
-            gx[i][j] = np.sum(pixels_x * sobel_x)
-            gy[i][j] = np.sum(pixels_y * sobel_y)
+            gx[i][j] = np.sum(pixels_x * operator_x)
+            gy[i][j] = np.sum(pixels_y * operator_y)
 
     return (gx, gy)
 
 
-def sobel(image: cv2.typing.MatLike, rad: int = 1) -> cv2.typing.MatLike:
-    gx, gy = get_gradients(image, rad)
+def sobel(image: cv2.typing.MatLike, fast: bool = False) -> cv2.typing.MatLike:
+    gx, gy = get_gradients(image, sobel_x, sobel_y)
 
-    new_image = np.sqrt(gx ** 2 + gy ** 2)
-
-    #Faster method
-    #new_image = np.abs(gx) + np.abs(gy)
+    if fast:
+        new_image = np.abs(gx) + np.abs(gy)
+    else:
+        new_image = np.sqrt(gx ** 2 + gy ** 2)
 
     new_image = unnormalize(new_image)
     
     return new_image
 
+def prewitt(image: cv2.typing.MatLike, fast: bool = False) -> cv2.typing.MatLike:
+    gx, gy = get_gradients(image, prewitt_x, prewitt_y)
+
+    if fast:
+        new_image = np.abs(gx) + np.abs(gy)
+    else:
+        new_image = np.sqrt(gx ** 2 + gy ** 2)
+
+    new_image = unnormalize(new_image)
+    
+    return new_image
+
+def canny(image: cv2.typing.MatLike, filter_rad: int =1, fast: bool = False) -> cv2.typing.MatLike:
+    gaussian_filtered_image = gaussian_filter(image, filter_rad)
+
+    gx, gy = get_gradients(gaussian_filtered_image, sobel_x, sobel_y)
+
+    g = np.sqrt(gx ** 2 + gy ** 2)
+    degs = np.rad2deg(np.arctan(gy / (gx + 10e-9)))
+
+    gh, gw = g.shape
+
+    gx_cp = np.array([[gx[i][j] for j in range(gw)] for i in range(gh)])
+    k = np.zeros((3, 3))
+
+    for i in range(gh):
+        for j in range(gw):
+            for k in range(3):
+                for l in range(3):
+                    pass
+            if i < 0 or i >= gh or j < 0 or j >= gw:
+                pass
+            elif degs[i][j] > 67.5 or degs[i][j] <= -67.5: #90deg
+                pass
+            elif degs[i][j] > 22.5 and degs[i][j] <= 67.5: #45deg
+                pass
+            elif degs[i][j] > -22.5 and degs[i][j] <= 22.5: #0deg
+                pass
+            elif degs[i][j] > -67.5 and degs[i][j] <= 22.5: #-45deg
+                pass
+
 def main():
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
-    lena_sobel = sobel(lena, 1)
+    canny(lena)
+
+    lena_sobel = sobel(lena)
     cv2.imwrite('lena_sobel.png', lena_sobel)
+
+    lena_prewitt = prewitt(lena)
+    cv2.imwrite('lena_prewitt.png', lena_prewitt)
+
+    lena_gaussian_filter_gs = gaussian_filter(lena)
+    cv2.imwrite('lena_gaussian_filter_gs.png', lena_gaussian_filter_gs)
 
 if __name__ == "__main__":
     main()
