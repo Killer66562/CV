@@ -181,7 +181,64 @@ def canny(image: cv2.typing.MatLike, filter_rad: int =1, fast: bool = False) -> 
             elif degs[i][j] > -67.5 and degs[i][j] <= 22.5: #-45deg
                 pass
 
+def erode(image: cv2.typing.MatLike, rad: int = 1) -> cv2.typing.MatLike:
+    height, width = image.shape
+
+    k_size = (rad * 2 + 1) ** 2
+
+    new_image = np.zeros_like(image, dtype=np.uint8)
+    pixels = np.zeros((k_size, ), dtype=np.uint8)
+
+    for i in range(height):
+        for j in range(width):
+            idx = 0
+            for k in range(i - rad, i + rad + 1):
+                for l in range(j - rad, j + rad + 1):
+                    if k < 0 or k >= height or l < 0 or l >= width:
+                        pixels[idx] = image[i][j]
+                    else:
+                        pixels[idx] = image[k][l]
+                    idx = idx + 1
+
+            for pixel in pixels:
+                if pixel == 0:
+                    new_image[i][j] = 0
+                    break
+            else:
+                new_image[i][j] = 255
+
+    return new_image
+
+def dilate(image: cv2.typing.MatLike, rad: int = 1) -> cv2.typing.MatLike:
+    height, width = image.shape
+
+    k_size = (rad * 2 + 1) ** 2
+
+    new_image = np.zeros_like(image, dtype=np.uint8)
+    pixels = np.zeros((k_size, ), dtype=np.uint8)
+
+    for i in range(height):
+        for j in range(width):
+            idx = 0
+            for k in range(i - rad, i + rad + 1):
+                for l in range(j - rad, j + rad + 1):
+                    if k < 0 or k >= height or l < 0 or l >= width:
+                        pixels[idx] = image[i][j]
+                    else:
+                        pixels[idx] = image[k][l]
+                    idx = idx + 1
+
+            for pixel in pixels:
+                if pixel == 255:
+                    new_image[i][j] = 255
+                    break
+            else:
+                new_image[i][j] = 0
+
+    return new_image
+
 def main():
+    '''
     lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
     canny(lena)
@@ -194,6 +251,15 @@ def main():
 
     lena_gaussian_filter_gs = gaussian_filter(lena)
     cv2.imwrite('lena_gaussian_filter_gs.png', lena_gaussian_filter_gs)
+    '''
+
+    lena_binary = cv2.imread('binary.png', cv2.THRESH_BINARY)
+
+    lena_erosion = erode(lena_binary, 2)
+    cv2.imwrite('lena_erosion.png', lena_erosion)
+
+    lena_dilation = dilate(lena_binary, 2)
+    cv2.imwrite('lena_dilation.png', lena_dilation)
 
 if __name__ == "__main__":
     main()
