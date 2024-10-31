@@ -237,11 +237,15 @@ def dilate(image: cv2.typing.MatLike, rad: int = 1) -> cv2.typing.MatLike:
 
     return new_image
 
-def main():
-    '''
-    lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
+def opening(image: cv2.typing.MatLike, rad_erode: int = 1, rad_dilate: int = 1) -> cv2.typing.MatLike:
+    return dilate(erode(image, rad_erode), rad_dilate)
 
-    canny(lena)
+def closing(image: cv2.typing.MatLike, rad_erode: int = 1, rad_dilate: int = 1) -> cv2.typing.MatLike:
+    return erode(dilate(image, rad_dilate), rad_erode)
+
+
+def main():
+    lena = cv2.imread('lena.bmp', cv2.IMREAD_GRAYSCALE)
 
     lena_sobel = sobel(lena)
     cv2.imwrite('lena_sobel.png', lena_sobel)
@@ -251,15 +255,20 @@ def main():
 
     lena_gaussian_filter_gs = gaussian_filter(lena)
     cv2.imwrite('lena_gaussian_filter_gs.png', lena_gaussian_filter_gs)
-    '''
-
-    lena_binary = cv2.imread('binary.png', cv2.THRESH_BINARY)
 
     lena_erosion = erode(lena_binary, 2)
     cv2.imwrite('lena_erosion.png', lena_erosion)
 
     lena_dilation = dilate(lena_binary, 2)
     cv2.imwrite('lena_dilation.png', lena_dilation)
+    
+    lena_binary = cv2.imread('binary.png', cv2.THRESH_BINARY)
+
+    lena_opening = opening(lena_binary, 1, 1)
+    cv2.imwrite('lena_opening.png', lena_opening)
+
+    lena_closing = closing(lena_binary, 1, 1)
+    cv2.imwrite('lena_closing.png', lena_closing)
 
 if __name__ == "__main__":
     main()
