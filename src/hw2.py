@@ -152,34 +152,111 @@ def prewitt(image: cv2.typing.MatLike, fast: bool = False) -> cv2.typing.MatLike
     
     return new_image
 
-def canny(image: cv2.typing.MatLike, filter_rad: int =1, fast: bool = False) -> cv2.typing.MatLike:
+def canny(image: cv2.typing.MatLike, filter_rad: int =1, fast: bool = False, thres_low: float = 0.05, thres_high: float = 0.30) -> cv2.typing.MatLike:
     gaussian_filtered_image = gaussian_filter(image, filter_rad)
 
     gx, gy = get_gradients(gaussian_filtered_image, sobel_x, sobel_y)
 
-    g = np.sqrt(gx ** 2 + gy ** 2)
+    if fast:
+        g = np.abs(gx) + np.abs(gy)
+    else:
+        g = np.sqrt(gx ** 2 + gy ** 2)
+
     degs = np.rad2deg(np.arctan(gy / (gx + 10e-9)))
 
     gh, gw = g.shape
 
-    gx_cp = np.array([[gx[i][j] for j in range(gw)] for i in range(gh)])
-    k = np.zeros((3, 3))
+    g_cp = np.array([[g[i][j] for j in range(gw)] for i in range(gh)], dtype=np.float32)
+    kernel = np.zeros((3, 3))
 
     for i in range(gh):
         for j in range(gw):
             for k in range(3):
+                real_k = i + k - 1
                 for l in range(3):
-                    pass
-            if i < 0 or i >= gh or j < 0 or j >= gw:
-                pass
-            elif degs[i][j] > 67.5 or degs[i][j] <= -67.5: #90deg
-                pass
+                    real_l = j + l - 1
+                    if real_k < 0 or real_k >= gh or real_l < 0 or real_l >= gw:
+                        kernel[k][l] = 0
+                    else:
+                        kernel[k][l] = g[real_k][real_l]
+
+            pairs = None
+            if degs[i][j] > 67.5 or degs[i][j] <= -67.5: #90deg
+                pairs = ((0, 1), (1, 1), (2, 1)) 
             elif degs[i][j] > 22.5 and degs[i][j] <= 67.5: #45deg
-                pass
+                pairs = ((0, 2), (1, 1), (2, 0))
             elif degs[i][j] > -22.5 and degs[i][j] <= 22.5: #0deg
-                pass
+                pairs = ((1, 0), (1, 1), (1, 2))
             elif degs[i][j] > -67.5 and degs[i][j] <= 22.5: #-45deg
-                pass
+                pairs = ((0, 0), (1, 1), (2, 2))
+
+            if pairs:
+                k_max = np.max(np.array([kernel[a][b] for a, b in pairs]))
+                if kernel[1][1] != k_max:
+                    g_cp[i][j] = 0
+                    continue
+            else:
+                continue
+
+            if np.abs(g_cp[i][j]) >= thres_high:
+                g_cp[i][j] = 1
+                continue
+            elif np.abs(g_cp[i][j]) <= thres_low:
+                g_cp[i][j] = 0
+                continue
+
+    for i in range(gh):
+        for j in range(gw):
+            print(i, j)
+
+            if g_cp[i][j] == 0 or g_cp[i][j] == 1:
+                continue
+
+            q: list[tuple[int, int]] = []
+            walked = np.zeros_like(g_cp, dtype=np.uint8)
+
+            q.append((i, j))
+            pairs = None
+            found = False
+
+            while len(q) > 0:
+                c_i, c_j = q.pop()
+                walked[c_i][c_j] = 255
+                if degs[i][j] > 67.5 or degs[i][j] <= -67.5: #90deg
+                    pairs = ((1, 0), (-1, 0)) 
+                elif degs[i][j] > 22.5 and degs[i][j] <= 67.5: #45deg
+                    pairs = ((-1, -1), (1, 1)) 
+                elif degs[i][j] > -22.5 and degs[i][j] <= 22.5: #0deg
+                    pairs = ((0, 1), (0, -1))
+                elif degs[i][j] > -67.5 and degs[i][j] <= 22.5: #-45deg
+                    pairs = ((1, -1), (-1, 1))
+
+                if pairs:
+                    for pair in pairs:
+                        r_i, r_j = c_i + pair[0], c_j + pair[1]
+                        if r_i < 0 or r_i >= gh or r_j < 0 or r_j >= gw:
+                            continue
+                        if walked[c_i][c_j] != 0:
+                            continue
+                        if g_cp[r_i][r_j] == 1:
+                            found = True
+                            break
+                        elif g_cp[r_i][r_j] == 0:
+                            continue
+                        else:
+                            q.append((r_i, r_j))
+                            
+                if found is True:
+                    g_cp[i][j] = 1
+                    break
+
+    for i in range(gh):
+        for j in range(gw):
+            if g_cp[i][j] != 1:
+                g_cp[i][j] = 0
+
+    new_image = unnormalize(g_cp)
+    return new_image
 
 def erode(image: cv2.typing.MatLike, rad: int = 1) -> cv2.typing.MatLike:
     height, width = image.shape
@@ -253,16 +330,16 @@ def main():
     lena_prewitt = prewitt(lena)
     cv2.imwrite('lena_prewitt.png', lena_prewitt)
 
-    lena_gaussian_filter_gs = gaussian_filter(lena)
-    cv2.imwrite('lena_gaussian_filter_gs.png', lena_gaussian_filter_gs)
+    lena_canny = canny(lena)
+    cv2.imwrite('lena_canny.png', lena_canny)
+
+    lena_binary = cv2.imread('binary.png', cv2.THRESH_BINARY)
 
     lena_erosion = erode(lena_binary, 2)
     cv2.imwrite('lena_erosion.png', lena_erosion)
 
     lena_dilation = dilate(lena_binary, 2)
     cv2.imwrite('lena_dilation.png', lena_dilation)
-    
-    lena_binary = cv2.imread('binary.png', cv2.THRESH_BINARY)
 
     lena_opening = opening(lena_binary, 1, 1)
     cv2.imwrite('lena_opening.png', lena_opening)
