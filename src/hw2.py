@@ -152,8 +152,9 @@ def prewitt(image: cv2.typing.MatLike, fast: bool = False) -> cv2.typing.MatLike
     
     return new_image
 
-def canny(image: cv2.typing.MatLike, filter_rad: int =1, fast: bool = False, thres_low: float = 0.05, thres_high: float = 0.30) -> cv2.typing.MatLike:
+def canny(image: cv2.typing.MatLike, filter_rad: int = 1, fast: bool = False, thres_low: float = 0.2, thres_high: float = 0.4) -> cv2.typing.MatLike:
     gaussian_filtered_image = gaussian_filter(image, filter_rad)
+    gaussian_filtered_image = normalize(gaussian_filtered_image)
 
     gx, gy = get_gradients(gaussian_filtered_image, sobel_x, sobel_y)
 
@@ -207,48 +208,16 @@ def canny(image: cv2.typing.MatLike, filter_rad: int =1, fast: bool = False, thr
 
     for i in range(gh):
         for j in range(gw):
-            print(i, j)
-
-            if g_cp[i][j] == 0 or g_cp[i][j] == 1:
+            if g_cp[i][j] != 1:
                 continue
-
-            q: list[tuple[int, int]] = []
-            walked = np.zeros_like(g_cp, dtype=np.uint8)
-
-            q.append((i, j))
-            pairs = None
-            found = False
-
-            while len(q) > 0:
-                c_i, c_j = q.pop()
-                walked[c_i][c_j] = 255
-                if degs[i][j] > 67.5 or degs[i][j] <= -67.5: #90deg
-                    pairs = ((1, 0), (-1, 0)) 
-                elif degs[i][j] > 22.5 and degs[i][j] <= 67.5: #45deg
-                    pairs = ((-1, -1), (1, 1)) 
-                elif degs[i][j] > -22.5 and degs[i][j] <= 22.5: #0deg
-                    pairs = ((0, 1), (0, -1))
-                elif degs[i][j] > -67.5 and degs[i][j] <= 22.5: #-45deg
-                    pairs = ((1, -1), (-1, 1))
-
-                if pairs:
-                    for pair in pairs:
-                        r_i, r_j = c_i + pair[0], c_j + pair[1]
-                        if r_i < 0 or r_i >= gh or r_j < 0 or r_j >= gw:
-                            continue
-                        if walked[c_i][c_j] != 0:
-                            continue
-                        if g_cp[r_i][r_j] == 1:
-                            found = True
-                            break
-                        elif g_cp[r_i][r_j] == 0:
-                            continue
-                        else:
-                            q.append((r_i, r_j))
-                            
-                if found is True:
-                    g_cp[i][j] = 1
-                    break
+            for k in range(3):
+                real_k = i + k - 1
+                for l in range(3):
+                    real_l = j + l - 1
+                    if real_k < 0 or real_k >= gh or real_l < 0 or real_l >= gw:
+                        continue
+                    elif g_cp[real_k][real_l] != 0:
+                        g_cp[real_k][real_l] = 1
 
     for i in range(gh):
         for j in range(gw):
