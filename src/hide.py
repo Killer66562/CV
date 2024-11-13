@@ -14,53 +14,49 @@ def encrypt(image: cv2.typing.MatLike, text: str):
         return image
     
     new_image = np.array(image, dtype=np.uint8)
+    image = image & np.uint8(254)
     
-    i = 0
-    j = 0
-    c = 0
-    t = 0
-
     #Hide message
-    while c < channels:
-        while i < height:
-            while j < width and t < binary_len:
-                pixel = image[i][j][c]
-                bit = np.uint8(binary[t])
-                new_image[i][j][c] = pixel & np.uint8(254) | bit
-                j += 1
-                t += 1
-            i += 1
-            j = 0
-        c += 1
-        i = 0
+    t = 0
+    zeros = 0
+    for c in range(channels):
+        for i in range(height):
+            for j in range(width):
+                if t >= binary_len:
+                    new_image[i][j][c] = image[i][j][c] & np.uint8(254)
+                    zeros += 1
+                    if zeros >= 8:
+                        break
+                else:
+                    new_image[i][j][c] = image[i][j][c] & np.uint8(254) | np.uint8(int(binary[t]))
+                    t += 1
+            if t >= binary_len:
+                break
+        if t >= binary_len:
+            break
 
     return new_image
 
-def decrypt(image: cv2.typing.MatLike, text_len: int) -> str:
+def decrypt(image: cv2.typing.MatLike) -> str:
     height, width, channels = image.shape
 
     bit_str = ""
-    bit_str_len = 0
-
     for c in range(channels):
         for i in range(height):
             for j in range(width):
                 bit = image[i][j][c] & np.uint8(1)
                 bit_str += str(bit)
-                bit_str_len += 1
 
-    limit = bit_str_len // 8
+    limit = (height * width * channels) // 8
     text = ""
-    text_current_len = 0
 
     for i in range(limit):
         bits = bit_str[i * 8 : (i + 1) * 8]
         number = int(bits, 2)
+        if number == 0:
+            break
         char = chr(number)
         text += char
-        text_current_len += 1
-        if text_current_len >= text_len:
-            break
 
     return text
 
@@ -72,14 +68,14 @@ def encrypt_and_save(read_path: str, save_path: str, text_file_path: str):
     image_encrypted = encrypt(image, text)
     cv2.imwrite(save_path, image_encrypted)
 
-def decrypt_and_print(read_path: str, text_len: int):
+def decrypt_and_print(read_path: str):
     image = cv2.imread(read_path)
-    text = decrypt(image, text_len)
+    text = decrypt(image)
     print(text)
 
 def main():
     #encrypt_and_save('lena.bmp', 'lena_encrypted.bmp', 'test.txt')
-    decrypt_and_print('lena_encrypted.bmp', 5000)
+    decrypt_and_print('lena_encrypted.bmp')
 
 if __name__ == "__main__":
     main()
