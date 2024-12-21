@@ -161,7 +161,7 @@ class GHT(object):
         time_end = time.time()
         time_delta = time_end - time_start
 
-        print(f"Finished in {time_delta:.2f} seconds")
+        print(f"Finished in {time_delta:.2f} seconds", end="\r")
 
         return accumulator
     
