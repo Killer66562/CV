@@ -136,7 +136,8 @@ class GHT(object):
             counter += 1
             percentage = counter / positions_len * 100
             time_delta = time.time() - time_start
-            print(f"Progress: {counter}/{positions_len} ({percentage:.2f}%), Time: {time_delta:.2f} seconds", end="\r")
+            text = f"Progress: {counter}/{positions_len} ({percentage:.2f}%), Time: {time_delta:.2f} seconds"
+            print(f"{text:<50}", end="\r")
 
             for r in r_table.get(theta=thetas[i, j]):
                 xc = j - r[0] * cos_scale_table + r[1] * sin_scale_table
@@ -161,7 +162,8 @@ class GHT(object):
         time_end = time.time()
         time_delta = time_end - time_start
 
-        print(f"Finished in {time_delta:.2f} seconds", end="\r")
+        text = f"Finished in {time_delta:.2f} seconds"
+        print(f"{text:<50}", end="\r\n")
 
         return accumulator
     
@@ -189,7 +191,7 @@ def main():
 
     reference = cv2.imread('Refernce.png', cv2.IMREAD_GRAYSCALE)
 
-    angle_step = 10
+    angle_step = 5
     scale_step = 0.1
     
     '''
